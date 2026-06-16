@@ -7,6 +7,10 @@
 
 import SwiftUI
 
+extension Notification.Name {
+    static let usdzSaved = Notification.Name("usdzSaved")
+}
+
 @main
 struct RoomSimulationApp: App {
     var body: some Scene {
