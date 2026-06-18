@@ -10,6 +10,7 @@ import SwiftUI
 struct ContentView: View {
     @State private var usdzList: [URL] = []
     @State private var path = NavigationPath()
+    @EnvironmentObject var store: USDZStore
     
     var body: some View {
         NavigationStack(path: $path) {
@@ -41,22 +42,12 @@ struct ContentView: View {
     }
     
     func loadUsdzList() {
-        do {
-            let fileManager = FileManager.default
-            let documentDirectory = try fileManager.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-            
-            let urls = try FileManager.default.contentsOfDirectory(
-                at: documentDirectory,
-                includingPropertiesForKeys: nil
-            )
-            
-            let files = urls.filter {
-                $0.pathExtension.lowercased() == "usdz"
+        Task {
+            do {
+                usdzList = try await store.fetchStoreList()
+            } catch {
+                return
             }
-            
-            usdzList = files
-        } catch {
-            return
         }
     }
     

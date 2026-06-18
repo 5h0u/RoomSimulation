@@ -68,6 +68,7 @@ struct RoomCaptureViewRepresentable: UIViewRepresentable {
 class CaptureSessionManager: NSObject,ObservableObject, RoomCaptureSessionDelegate, RoomCaptureViewDelegate {
     @Published var exportURL: URL?
     @Published var isProcessing: Bool = false
+    @EnvironmentObject var store: USDZStore
     
     override init() {
         super.init()
@@ -91,7 +92,7 @@ class CaptureSessionManager: NSObject,ObservableObject, RoomCaptureSessionDelega
         DispatchQueue.main.async {
             self.isProcessing = true
         }
-        DispatchQueue.global(qos: .userInitiated).async {
+        Task {
             do {
                 let fileManager = FileManager.default
                 let documentDirectory = try fileManager.url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
@@ -101,18 +102,17 @@ class CaptureSessionManager: NSObject,ObservableObject, RoomCaptureSessionDelega
 
                 let fileName = "ScannedRoom_\(formatter.string(from: Date())).usdz"
                 let destinationURL = documentDirectory.appendingPathComponent(fileName)
+                let uploadURLString = try await store.upload(path:destinationURL.absoluteString, fileName:fileName)
+                let uploadURL = URL(string: uploadURLString)!
                 
-                // 既存のファイルがあれば削除
-                if fileManager.fileExists(atPath: destinationURL.path) {
-                    try fileManager.removeItem(at: destinationURL)
-                }
+                try fileManager.removeItem(at: destinationURL)
                 
                 // パラメトリック（整理された綺麗な面）としてエクスポート
-                try processedResult.export(to: destinationURL, exportOptions: .parametric)
+                try processedResult.export(to: uploadURL, exportOptions: .parametric)
                 
                 // メインスレッドでURLを更新し、プレビューを表示
                 DispatchQueue.main.async {
-                    self.exportURL = destinationURL
+                    self.exportURL = uploadURL
                     self.isProcessing = false
                     
                     NotificationCenter.default.post(
